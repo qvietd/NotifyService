@@ -1,8 +1,6 @@
-﻿using NotifyService.Api.Hubs;
-using NotifyService.Api.Middleware;
+﻿using NotifyService.Api.Middleware;
 using NotifyService.Application;
 using NotifyService.Infrastructure;
-using NotifyService.Infrastructure.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -72,7 +70,6 @@ app.UseAuthorization();
 
 // Map endpoints
 app.MapControllers();
-app.MapHub<TodoNotificationHub>("/todoHub");
 
 // Serve static files for SignalR test client
 app.UseStaticFiles();
@@ -80,8 +77,8 @@ app.UseStaticFiles();
 // Ensure database is created
 using (var scope = app.Services.CreateScope())
 {
-    var context = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
-    await context.Database.EnsureCreatedAsync();
+    // var context = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
+    // await context.Database.EnsureCreatedAsync();
 }
 
 app.Run();
