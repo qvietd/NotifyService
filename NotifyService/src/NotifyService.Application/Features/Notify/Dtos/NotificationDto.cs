@@ -1,16 +1,16 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace NotifyService.Domain.Entities;
+namespace NotifyService.Application.Features.Notify.Queries;
 
-public class Notification
+public class NotificationDto
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; }
 
-    [BsonElement("userId")]
-    public string? UserId { get; set; }
+    [BsonElement("recipientId")]
+    public string? RecipientId { get; set; }
 
     [BsonElement("senderId")]
     public string? SenderId { get; set; }
