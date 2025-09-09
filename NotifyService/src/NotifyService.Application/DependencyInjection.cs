@@ -1,7 +1,5 @@
-using FluentValidation;
-using MediatR;
-using System.Reflection;
-using NotifyService.Application.Common.Behaviors;
+using NotifyService.Application.Interfaces;
+using NotifyService.Application.Services;
 
 namespace NotifyService.Application;
 
@@ -9,14 +7,9 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        var assembly = Assembly.GetExecutingAssembly();
-
-        services.AddMediatR(cfg => cfg.RegisterServicesFromAssembly(assembly));
-
-        services.AddValidatorsFromAssembly(assembly);
-
-        services.AddTransient(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
-
+        services.AddScoped<INotificationService, NotificationService>();
+        services.AddScoped<INotificationProcessor, NotificationProcessor>();
+        
         return services;
     }
 }

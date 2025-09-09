@@ -1,12 +1,14 @@
-using NotifyService.Domain.Entities;
+using NotifyService.Shared.Models;
 
 namespace NotifyService.Infrastructure.Repositories;
 
 public interface INotificationRepository
 {
-    Task<Notification> CreateAsync(Notification notification);
-    Task<IEnumerable<Notification>> GetUserNotificationsAsync(string userId, int page, int pageSize, CancellationToken cancellationToken = default);
+    Task<NotificationMessage> CreateAsync(NotificationMessage notification);
+    Task<NotificationMessage?> GetByBatchKeyAsync(string userId, string batchKey);
+    Task<IEnumerable<NotificationMessage>> GetUserNotificationsAsync(string userId, int page, int pageSize);
     Task<bool> MarkAsReadAsync(string notificationId);
     Task<int> GetUnreadCountAsync(string userId);
-    Task<bool> UpdateAsync(Notification notification);
+    Task<bool> UpdateAsync(NotificationMessage notification);
+    Task<List<NotificationMessage>> GetByIdsAsync(List<string> notificationIds);
 }

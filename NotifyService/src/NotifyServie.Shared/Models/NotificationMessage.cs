@@ -1,9 +1,9 @@
 using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
-namespace NotifyService.Domain.Entities;
+namespace NotifyService.Shared.Models;
 
-public class Notification
+public class NotificationMessage
 {
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
@@ -52,8 +52,8 @@ public class Notification
     [BsonElement("batchKey")]
     public string BatchKey { get; set; } = string.Empty; // Unique key for grouping similar notifications
 
-    [BsonElement("messageHistory")]
-    public List<MessageHistoryItem> MessageHistory { get; set; } = new();
+    //[BsonElement("messageHistory")]
+    //public List<MessageHistoryItem> MessageHistory { get; set; } = new();
 }
 
 public class MessageHistoryItem
