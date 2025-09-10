@@ -1,26 +1,26 @@
 using Microsoft.AspNetCore.SignalR;
-using NotifyService.Infrastructure.Services;
+using NotifyService.Application.Interfaces;
 
 namespace NotifyService.Infrastructure.Hubs;
 
 public class NotificationHub : Hub
 {
-    private readonly IUserConnectionService _userConnectionService;
+    private readonly IConnectionMappingService _connectionMapping;
 
-    public NotificationHub(IUserConnectionService userConnectionService)
+    public NotificationHub(IConnectionMappingService connectionMapping)
     {
-        _userConnectionService = userConnectionService;
+        _connectionMapping = connectionMapping;
     }
 
-    public async Task JoinUser(string userId)
+    public async Task JoinUserGroup(string userId)
     {
-        _userConnectionService.AddConnection(userId, Context.ConnectionId);
         await Groups.AddToGroupAsync(Context.ConnectionId, $"User_{userId}");
+        await _connectionMapping.AddConnectionAsync(userId, Context.ConnectionId);
     }
 
-    public override async Task OnDisconnectedAsync(Exception? exception)
+    public override async Task OnDisconnectedAsync(Exception exception)
     {
-        _userConnectionService.RemoveConnection(Context.ConnectionId);
+        await _connectionMapping.RemoveConnectionAsync(Context.ConnectionId);
         await base.OnDisconnectedAsync(exception);
     }
 }

@@ -52,6 +52,23 @@ public class NotificationRepository : INotificationRepository
         await _collection.UpdateOneAsync(filter, update);
     }
 
+    public async Task<IEnumerable<NotificationMessage>> GetPendingNotificationsAsync(int batchSize = 100)
+    {
+        var filter = Builders<NotificationMessage>.Filter.And(
+            Builders<NotificationMessage>.Filter.Eq(x => x.Status, NotificationStatus.Pending),
+            Builders<NotificationMessage>.Filter.Lt(x => x.RetryCount, 3)
+        );
+
+        var sort = Builders<NotificationMessage>.Sort
+            .Ascending(x => x.CreatedAt);
+
+        return await _collection
+            .Find(filter)
+            .Sort(sort)
+            .Limit(batchSize)
+            .ToListAsync();
+    }
+
     // public async Task<List<NotificationMessage>> GetUserNotificationsAsync(string userId, int page, int pageSize)
     // {
     //     var filter = Builders<NotificationMessage>.Filter.Eq(n => n.UserId, userId);

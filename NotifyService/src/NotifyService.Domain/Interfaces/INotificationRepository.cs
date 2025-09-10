@@ -8,4 +8,5 @@ public interface INotificationRepository
     Task UpdateStatusAsync(string id, NotificationStatus status, string errorMessage = null);
     Task<NotificationMessage> GetByIdAsync(string id);
     Task IncrementRetryCountAsync(string id);
+    Task<IEnumerable<NotificationMessage>> GetPendingNotificationsAsync(int batchSize = 100);
 }

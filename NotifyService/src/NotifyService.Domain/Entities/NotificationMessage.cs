@@ -1,4 +1,4 @@
-using MongoDB.Bson;
+﻿using MongoDB.Bson;
 using MongoDB.Bson.Serialization.Attributes;
 
 namespace NotifyService.Domain.Entities;
@@ -13,7 +13,6 @@ public class NotificationMessage
     public string Title { get; set; }
     public string Content { get; set; }
     public string Type { get; set; }
-    public Dictionary<string, object> Data { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     public DateTime? ProcessedAt { get; set; }
     public NotificationStatus Status { get; set; } = NotificationStatus.Pending;

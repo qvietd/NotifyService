@@ -7,5 +7,4 @@ public class NotificationDto
     public string Title { get; set; }
     public string Content { get; set; }
     public string Type { get; set; }
-    public Dictionary<string, object> Data { get; set; }
 }

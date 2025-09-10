@@ -1,85 +1,125 @@
 using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.Options;
+using NotifyService.Application.Dtos;
 using NotifyService.Application.Interfaces;
+using NotifyService.Domain.Entities;
 using NotifyService.Infrastructure.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
 namespace NotifyService.Application.Services;
-public class RabbitMqService : IRabbitMqService, IDisposable
+public class RabbitMQService : IRabbitMqService, IDisposable
 {
     private readonly IConnection _connection;
     private readonly IModel _channel;
-    private readonly RabbitMqSettings _settings;
+    private readonly RabbitMQSettings _settings;
+    private readonly ILogger<RabbitMQService> _logger;
+    private EventingBasicConsumer _consumer;
 
-    public RabbitMqService(IOptions<RabbitMqSettings> settings)
+    public RabbitMQService(IOptions<RabbitMQSettings> settings, ILogger<RabbitMQService> logger)
     {
         _settings = settings.Value;
+        _logger = logger;
 
         var factory = new ConnectionFactory()
         {
-            HostName = _settings.HostName,
-            Port = _settings.Port,
-            UserName = _settings.UserName,
-            Password = _settings.Password,
-            VirtualHost = _settings.VirtualHost
+            Uri = new Uri(_settings.ConnectionString)
         };
 
         _connection = factory.CreateConnection();
         _channel = _connection.CreateModel();
+
+        SetupQueuesAndExchange();
     }
 
-    public async Task PublishAsync<T>(string queueName, T message)
+    private void SetupQueuesAndExchange()
     {
-        _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
+        // Declare exchange
+        _channel.ExchangeDeclare(_settings.ExchangeName, ExchangeType.Direct, true);
 
-        var json = JsonSerializer.Serialize(message);
+        // Declare main queue with DLX
+        var queueArgs = new Dictionary<string, object>
+        {
+            { "x-dead-letter-exchange", $"{_settings.ExchangeName}-dlx" },
+            { "x-dead-letter-routing-key", "dead-letter" }
+        };
+
+        _channel.QueueDeclare(_settings.QueueName, true, false, false, queueArgs);
+        _channel.QueueBind(_settings.QueueName, _settings.ExchangeName, "notification");
+
+        // Declare DLQ exchange and queue
+        _channel.ExchangeDeclare($"{_settings.ExchangeName}-dlx", ExchangeType.Direct, true);
+        _channel.QueueDeclare(_settings.DeadLetterQueueName, true, false, false);
+        _channel.QueueBind(_settings.DeadLetterQueueName, $"{_settings.ExchangeName}-dlx", "dead-letter");
+
+        // Set prefetch count
+        _channel.BasicQos(0, (ushort)_settings.PrefetchCount, false);
+    }
+
+    public void PublishMessage(NotificationDto notification)
+    {
+        var json = JsonSerializer.Serialize(notification);
         var body = Encoding.UTF8.GetBytes(json);
 
         var properties = _channel.CreateBasicProperties();
         properties.Persistent = true;
 
-        _channel.BasicPublish(exchange: "", routingKey: queueName, basicProperties: properties, body: body);
-        await Task.CompletedTask;
+        _channel.BasicPublish(_settings.ExchangeName, "notification", properties, body);
     }
 
-    public async Task StartConsumingAsync<T>(string queueName, Func<T, Task> processMesssage, int prefetchCount = 1)
+    public void PublishToDeadLetter(NotificationMessage notification)
     {
-        _channel.QueueDeclare(queue: queueName, durable: true, exclusive: false, autoDelete: false, arguments: null);
-        _channel.BasicQos(prefetchSize: 0, prefetchCount: (ushort)prefetchCount, global: false);
+        var json = JsonSerializer.Serialize(notification);
+        var body = Encoding.UTF8.GetBytes(json);
 
-        var consumer = new EventingBasicConsumer(_channel);
-        consumer.Received += async (model, ea) =>
+        var properties = _channel.CreateBasicProperties();
+        properties.Persistent = true;
+
+        _channel.BasicPublish($"{_settings.ExchangeName}-dlx", "dead-letter", properties, body);
+    }
+
+    public void StartConsuming(Func<NotificationDto, Task<bool>> messageHandler)
+    {
+        _consumer = new EventingBasicConsumer(_channel);
+        
+        _consumer.Received += async (model, ea) =>
         {
+            var body = ea.Body.ToArray();
+            var json = Encoding.UTF8.GetString(body);
+            
             try
             {
-                var body = ea.Body.ToArray();
-                var json = Encoding.UTF8.GetString(body);
-                var message = JsonSerializer.Deserialize<T>(json);
-
-                if (message != null)
+                var notification = JsonSerializer.Deserialize<NotificationDto>(json);
+                var success = await messageHandler(notification);
+                
+                if (success)
                 {
-                    await processMesssage(message);
+                    _channel.BasicAck(ea.DeliveryTag, false);
                 }
-
-                _channel.BasicAck(deliveryTag: ea.DeliveryTag, multiple: false);
+                else
+                {
+                    _channel.BasicNack(ea.DeliveryTag, false, false); // Send to DLQ
+                }
             }
             catch (Exception ex)
             {
-                // Log error
-                Console.WriteLine($"Error processing message: {ex.Message}");
-                _channel.BasicNack(deliveryTag: ea.DeliveryTag, multiple: false, requeue: true);
+                _logger.LogError(ex, "Error processing message: {Message}", json);
+                _channel.BasicNack(ea.DeliveryTag, false, false);
             }
         };
 
-        _channel.BasicConsume(queue: queueName, autoAck: false, consumer: consumer);
-        await Task.CompletedTask;
+        _channel.BasicConsume(_settings.QueueName, false, _consumer);
+    }
+
+    public void StopConsuming()
+    {
+        _consumer?.Model?.Close();
     }
 
     public void Dispose()
     {
-        _channel?.Dispose();
-        _connection?.Dispose();
+        _channel?.Close();
+        _connection?.Close();
     }
 }

@@ -7,9 +7,10 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<INotificationService, NotificationService>();
-        services.AddScoped<INotificationProcessor, NotificationProcessor>();
-        
+        services.AddSingleton<IRabbitMqService, RabbitMQService>();
+        services.AddSingleton<IConnectionMappingService, ConnectionMappingService>();
+        services.AddSingleton<IBatchProcessor, BatchProcessor>();
+
         return services;
     }
 }
