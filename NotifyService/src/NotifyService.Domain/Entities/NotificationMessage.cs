@@ -47,6 +47,8 @@ public class NotificationMessage
 
     [BsonElement("reactByUsers")]
     public List<ReactByUser> ReactByUsers { get; set; } = new();
+
+    public NotificationStatus Status { get; set; } = NotificationStatus.Pending;
 }
 
 public class ReactByUser
@@ -65,4 +67,13 @@ public class ReactByUser
 
     [BsonElement("receivedAt")]
     public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;
+}
+
+public enum NotificationStatus
+{
+    Pending,
+    Processing,
+    Sent,
+    Failed,
+    DeadLetter
 }

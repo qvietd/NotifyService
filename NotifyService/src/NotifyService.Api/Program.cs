@@ -5,6 +5,12 @@ using NotifyService.Infrastructure.Hubs;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configuration
+builder.Services.Configure<RabbitMQConfig>(builder.Configuration.GetSection("RabbitMQ"));
+builder.Services.Configure<MongoDBConfig>(builder.Configuration.GetSection("MongoDB"));
+builder.Services.Configure<RedisConfig>(builder.Configuration.GetSection("Redis"));
+builder.Services.Configure<EmailConfig>(builder.Configuration.GetSection("Email"));
+
 // Add services
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
