@@ -1,6 +1,6 @@
 namespace NotifyService.Infrastructure.Configuration;
 
-public class RedisConfig
+public class RedisSettings
 {
     public string ConnectionString { get; set; }
 }

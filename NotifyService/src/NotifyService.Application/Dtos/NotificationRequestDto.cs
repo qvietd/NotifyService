@@ -1,9 +1,11 @@
 namespace NotifyService.Application.Dtos;
 
-public class NotificationRequestDto
+public class NotificationDto
 {
-    public string senderId { get; set; } = string.Empty;
-    public string senderEmail { get; set; } = string.Empty;
-    public string eventType { get; set; } = string.Empty;
-    public string Message { get; set; } = string.Empty;
+    public string UserId { get; set; }
+    public string ConnectionId { get; set; }
+    public string Title { get; set; }
+    public string Content { get; set; }
+    public string Type { get; set; }
+    public Dictionary<string, object> Data { get; set; }
 }
