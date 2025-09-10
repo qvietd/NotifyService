@@ -1,6 +1,7 @@
+using NotifyService.Application.Dtos;
 using NotifyService.Application.Interfaces;
+using NotifyService.Domain.Entities;
 using NotifyService.Infrastructure.Repositories;
-using NotifyService.Shared.Models;
 
 namespace NotifyService.Application.Services;
 
@@ -17,7 +18,7 @@ public class NotificationService : INotificationService
         _logger = logger;
     }
 
-    public async Task<NotificationMessage> CreateOrUpdateNotificationAsync(NotificationRequest request)
+    public async Task<NotificationMessage> CreateOrUpdateNotificationAsync(NotificationRequestDto request)
     {
         try
         {
@@ -113,7 +114,7 @@ public class NotificationService : INotificationService
         return await _notificationRepository.GetUnreadCountAsync(userId);
     }
 
-    public async Task BatchProcessNotificationsAsync(List<NotificationRequest> notifications)
+    public async Task BatchProcessNotificationsAsync(List<NotificationRequestDto> notifications)
     {
         try
         {
@@ -191,29 +192,5 @@ public class NotificationService : INotificationService
             _logger.LogError(ex, "Error batch processing notifications");
             throw;
         }
-    }
-
-    private string GenerateBatchKey(NotificationRequest request)
-    {
-        // Generate batch key based on user, type, and optionally some metadata
-        // This groups similar notifications together
-        var keyComponents = new List<string> 
-        { 
-            request.UserId, 
-            request.Type 
-        };
-
-        // Add specific metadata keys that should group notifications
-        // if (request.Metadata.ContainsKey("source"))
-        // {
-        //     keyComponents.Add(request.Metadata["source"].ToString());
-        // }
-
-        // if (request.Metadata.ContainsKey("category"))
-        // {
-        //     keyComponents.Add(request.Metadata["category"].ToString());
-        // }
-
-        return string.Join(":", keyComponents);
     }
 }

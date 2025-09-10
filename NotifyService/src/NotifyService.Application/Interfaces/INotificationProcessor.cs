@@ -1,8 +1,9 @@
-using NotifyService.Shared.Models;
+
+using NotifyService.Application.Dtos;
 
 namespace NotifyService.Application.Interfaces;
 public interface INotificationProcessor
 {
-    Task ProcessNotificationAsync(NotificationRequest request);
-    Task ProcessBatchNotificationsAsync(List<NotificationRequest> requests);
+    Task ProcessNotificationAsync(NotificationRequestDto request);
+    Task ProcessBatchNotificationsAsync(List<NotificationRequestDto> requests);
 }

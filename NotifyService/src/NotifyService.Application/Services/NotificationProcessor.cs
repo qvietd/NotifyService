@@ -1,8 +1,9 @@
 using Microsoft.AspNetCore.SignalR;
+using NotifyService.Application.Dtos;
 using NotifyService.Application.Interfaces;
+using NotifyService.Domain.Entities;
 using NotifyService.Infrastructure.Hubs;
 using NotifyService.Infrastructure.Services;
-using NotifyService.Shared.Models;
 
 namespace NotifyService.Application.Services;
 
@@ -28,7 +29,7 @@ public class NotificationProcessor : INotificationProcessor
         _logger = logger;
     }
 
-    public async Task ProcessNotificationAsync(NotificationRequest request)
+    public async Task ProcessNotificationAsync(NotificationRequestDto request)
     {
         try
         {
@@ -59,7 +60,7 @@ public class NotificationProcessor : INotificationProcessor
         }
     }
 
-    public async Task ProcessBatchNotificationsAsync(List<NotificationRequest> requests)
+    public async Task ProcessBatchNotificationsAsync(List<NotificationRequestDto> requests)
     {
         try
         {

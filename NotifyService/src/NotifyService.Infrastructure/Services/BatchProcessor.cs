@@ -1,6 +1,5 @@
 using System.Collections.Concurrent;
 using NotifyService.Application.Interfaces;
-using NotifyService.Shared.Models;
 
 namespace NotifyService.Infrastructure.Services;
 

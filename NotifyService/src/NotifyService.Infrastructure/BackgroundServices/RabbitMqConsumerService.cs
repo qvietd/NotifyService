@@ -2,7 +2,6 @@ using System.Text;
 using System.Text.Json;
 using NotifyService.Application.Interfaces;
 using NotifyService.Infrastructure.Services;
-using NotifyService.Shared.Models;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 
@@ -57,7 +56,7 @@ public class RabbitMqConsumerService : BackgroundService
             _channel.QueueBind(queueName, exchangeName, "notification");
 
             // Set QoS to control message prefetch
-            var prefetchCount = _configuration.GetValue<ushort>("RabbitMq:PrefetchCount", 50);
+            var prefetchCount = _configuration.GetValue<ushort>("RabbitMq:PrefetchCount", 10);
             _channel.BasicQos(0, prefetchCount, false);
 
             _logger.LogInformation("RabbitMQ initialized successfully");

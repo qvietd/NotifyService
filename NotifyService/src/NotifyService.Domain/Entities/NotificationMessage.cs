@@ -9,6 +9,12 @@ public class NotificationMessage
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; } = string.Empty;
 
+    [BsonElement("userId")]
+    public string UserId { get; set; } = string.Empty;
+
+    [BsonElement("userEmail")]
+    public string UserEmail { get; set; } = string.Empty;
+
     [BsonElement("title")]
     public string Title { get; set; } = string.Empty;
 
@@ -52,10 +58,10 @@ public class ReactByUser
     public string Message { get; set; } = string.Empty;
 
     [BsonElement("senderId")]
-    public string UserId { get; set; } = string.Empty;
+    public string SenderId { get; set; } = string.Empty;
 
     [BsonElement("senderEmail")]
-    public string UserEmail { get; set; } = string.Empty;
+    public string SenderEmail { get; set; } = string.Empty;
 
     [BsonElement("receivedAt")]
     public DateTime ReceivedAt { get; set; } = DateTime.UtcNow;

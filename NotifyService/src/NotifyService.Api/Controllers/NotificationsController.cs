@@ -1,4 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
+using NotifyService.Application.Dtos;
 using NotifyService.Application.Interfaces;
 using NotifyService.Shared.Models;
 
@@ -50,7 +51,7 @@ public class NotificationsController : ControllerBase
     }
 
     [HttpPost("send")]
-    public async Task<IActionResult> SendNotification([FromBody] NotificationRequest request)
+    public async Task<IActionResult> SendNotification([FromBody] NotificationRequestDto request)
     {
         try
         {

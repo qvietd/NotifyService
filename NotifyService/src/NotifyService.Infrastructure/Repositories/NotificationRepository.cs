@@ -1,5 +1,5 @@
 using MongoDB.Driver;
-using NotifyService.Shared.Models;
+using NotifyService.Domain.Entities;
 
 namespace NotifyService.Infrastructure.Repositories;
 
@@ -10,24 +10,6 @@ public class NotificationRepository : INotificationRepository
     public NotificationRepository(IMongoDatabase database)
     {
         _collection = database.GetCollection<NotificationMessage>("notifications");
-        
-        // Create indexes
-        CreateIndexesAsync().Wait();
-    }
-
-    private async Task CreateIndexesAsync()
-    {
-        var indexKeys = Builders<NotificationMessage>.IndexKeys
-            .Ascending(x => x.UserId)
-            .Ascending(x => x.BatchKey);
-        
-        await _collection.Indexes.CreateOneAsync(new CreateIndexModel<NotificationMessage>(indexKeys));
-
-        var userIdIndex = Builders<NotificationMessage>.IndexKeys.Ascending(x => x.UserId);
-        await _collection.Indexes.CreateOneAsync(new CreateIndexModel<NotificationMessage>(userIdIndex));
-
-        var createdAtIndex = Builders<NotificationMessage>.IndexKeys.Descending(x => x.CreatedAt);
-        await _collection.Indexes.CreateOneAsync(new CreateIndexModel<NotificationMessage>(createdAtIndex));
     }
 
     public async Task<NotificationMessage> CreateAsync(NotificationMessage notification)
@@ -36,21 +18,16 @@ public class NotificationRepository : INotificationRepository
         return notification;
     }
 
-    public async Task<NotificationMessage?> GetByBatchKeyAsync(string userId, string batchKey)
+    public async Task InsertManyAsync(IEnumerable<NotificationMessage> notifications)
     {
-        var filter = Builders<NotificationMessage>.Filter.And(
-            Builders<NotificationMessage>.Filter.Eq(n => n.UserId, userId),
-            Builders<NotificationMessage>.Filter.Eq(n => n.BatchKey, batchKey)
-        );
-
-        return await _collection.Find(filter).FirstOrDefaultAsync();
+        await _collection.InsertManyAsync(notifications);
     }
 
-    public async Task<IEnumerable<NotificationMessage>> GetUserNotificationsAsync(string userId, int page, int pageSize)
+    public async Task<List<NotificationMessage>> GetUserNotificationsAsync(string userId, int page, int pageSize)
     {
         var filter = Builders<NotificationMessage>.Filter.Eq(n => n.UserId, userId);
         var sort = Builders<NotificationMessage>.Sort.Descending(n => n.UpdatedAt);
-        
+
         return await _collection.Find(filter)
             .Sort(sort)
             .Skip((page - 1) * pageSize)
@@ -62,7 +39,7 @@ public class NotificationRepository : INotificationRepository
     {
         var filter = Builders<NotificationMessage>.Filter.Eq(n => n.Id, notificationId);
         var update = Builders<NotificationMessage>.Update.Set(n => n.IsRead, true);
-        
+
         var result = await _collection.UpdateOneAsync(filter, update);
         return result.ModifiedCount > 0;
     }
