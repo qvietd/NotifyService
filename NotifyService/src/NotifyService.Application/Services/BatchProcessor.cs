@@ -10,7 +10,7 @@ namespace NotifyService.Application.Services;
 public class BatchProcessor : IBatchProcessor, IDisposable
 {
     private readonly IServiceProvider _serviceProvider;
-    private readonly MongoDBSettings _settings;
+    private readonly MongoDBConfig _settings;
     private readonly ILogger<BatchProcessor> _logger;
     private readonly ConcurrentQueue<NotificationMessage> _batch = new();
     private readonly Timer _timer;
@@ -18,7 +18,7 @@ public class BatchProcessor : IBatchProcessor, IDisposable
 
     public BatchProcessor(
         IServiceProvider serviceProvider,
-        IOptions<MongoDBSettings> settings,
+        IOptions<MongoDBConfig> settings,
         ILogger<BatchProcessor> logger)
     {
         _serviceProvider = serviceProvider;

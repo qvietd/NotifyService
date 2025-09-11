@@ -1,6 +1,7 @@
-﻿using NotifyService.Application;
+﻿using NotifyService.Api.Hubs;
+using NotifyService.Application;
 using NotifyService.Infrastructure;
-using NotifyService.Infrastructure.Hubs;
+using NotifyService.NotifyService.Api.HealthCheck;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -18,6 +19,11 @@ builder.Services.AddInfrastructure(builder.Configuration);
 
 // Add SignalR
 builder.Services.AddSignalR();
+
+builder.Services.AddHealthChecks()
+    .AddCheck<RabbitMQHealthCheck>("rabbitmq")
+    .AddCheck<MongoDBHealthCheck>("mongodb")
+    .AddCheck<RedisHealthCheck>("redis");
 
 // Add CORS
 builder.Services.AddCors(options =>
@@ -45,6 +51,7 @@ app.UseHttpsRedirection();
 app.UseRouting();
 
 app.MapControllers();
+app.MapHealthChecks("/health");
 app.MapHub<NotificationHub>("/notificationHub");
 
 app.Run();

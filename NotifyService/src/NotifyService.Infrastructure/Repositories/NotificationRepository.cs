@@ -9,64 +9,97 @@ public class NotificationRepository : INotificationRepository
 {
 
     private readonly IMongoCollection<NotificationMessage> _collection;
-    private readonly MongoDBSettings _settings;
+    private readonly ILogger<NotificationRepository> _logger;
+    private readonly MongoDBConfig _config;
 
-    public NotificationRepository(IMongoDatabase database, IOptions<MongoDBSettings> settings)
+    public NotificationRepository(
+        IOptions<MongoDBConfig> config,
+        ILogger<NotificationRepository> logger)
     {
-        _settings = settings.Value;
-        _collection = database.GetCollection<NotificationMessage>(_settings.CollectionName);
+        _config = config.Value;
+        _logger = logger;
+
+        var client = new MongoClient(_config.ConnectionString);
+        var database = client.GetDatabase(_config.DatabaseName);
+        _collection = database.GetCollection<NotificationMessage>(_config.CollectionName);
     }
 
-    public async Task BatchInsertAsync(IEnumerable<NotificationMessage> notifications)
+    public async Task<bool> BatchInsertAsync(IEnumerable<NotificationMessage> messages)
     {
-        if (notifications?.Any() == true)
+        try
         {
-            await _collection.InsertManyAsync(notifications);
+            var messageList = messages.ToList();
+            if (!messageList.Any()) return true;
+
+            await _collection.InsertManyAsync(messageList, new InsertManyOptions
+            {
+                IsOrdered = false
+            });
+
+            _logger.LogInformation($"Batch inserted {messageList.Count} messages");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Failed to batch insert messages");
+            return false;
         }
     }
 
-    public async Task UpdateStatusAsync(string id, NotificationStatus status, string errorMessage = null)
+    public async Task<IEnumerable<NotificationMessage>> GetPendingMessagesAsync(int limit)
     {
-        var filter = Builders<NotificationMessage>.Filter.Eq(x => x.Id, id);
-        var update = Builders<NotificationMessage>.Update
-            .Set(x => x.Status, status)
-            .Set(x => x.ProcessedAt, DateTime.UtcNow);
-
-        if (!string.IsNullOrEmpty(errorMessage))
-        {
-            update = update.Set(x => x.ErrorMessage, errorMessage);
-        }
-
-        await _collection.UpdateOneAsync(filter, update);
-    }
-
-    public async Task<NotificationMessage> GetByIdAsync(string id)
-    {
-        return await _collection.Find(x => x.Id == id).FirstOrDefaultAsync();
-    }
-
-    public async Task IncrementRetryCountAsync(string id)
-    {
-        var filter = Builders<NotificationMessage>.Filter.Eq(x => x.Id, id);
-        var update = Builders<NotificationMessage>.Update.Inc(x => x.RetryCount, 1);
-        await _collection.UpdateOneAsync(filter, update);
-    }
-
-    public async Task<IEnumerable<NotificationMessage>> GetPendingNotificationsAsync(int batchSize = 100)
-    {
-        var filter = Builders<NotificationMessage>.Filter.And(
-            Builders<NotificationMessage>.Filter.Eq(x => x.Status, NotificationStatus.Pending),
-            Builders<NotificationMessage>.Filter.Lt(x => x.RetryCount, 3)
-        );
-
-        var sort = Builders<NotificationMessage>.Sort
-            .Ascending(x => x.CreatedAt);
+        var filter = Builders<NotificationMessage>.Filter.Eq(x => x.Status, NotificationStatus.Pending);
+        var sort = Builders<NotificationMessage>.Sort.Ascending(x => x.CreatedAt);
 
         return await _collection
             .Find(filter)
             .Sort(sort)
-            .Limit(batchSize)
+            .Limit(limit)
             .ToListAsync();
+    }
+
+    public async Task<bool> UpdateMessageStatusAsync(string messageId, NotificationStatus status, string error = null)
+    {
+        var filter = Builders<NotificationMessage>.Filter.Eq(x => x.MessageId, messageId);
+        var update = Builders<NotificationMessage>.Update
+            .Set(x => x.Status, status)
+            .Set(x => x.ProcessedAt, DateTime.UtcNow);
+
+        if (!string.IsNullOrEmpty(error))
+        {
+            update = update.Set(x => x.ErrorMessage, error);
+        }
+
+        var result = await _collection.UpdateOneAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<bool> UpdateBatchStatusAsync(IEnumerable<string> messageIds, NotificationStatus status)
+    {
+        var filter = Builders<NotificationMessage>.Filter.In(x => x.MessageId, messageIds);
+        var update = Builders<NotificationMessage>.Update
+            .Set(x => x.Status, status)
+            .Set(x => x.ProcessedAt, DateTime.UtcNow);
+
+        var result = await _collection.UpdateManyAsync(filter, update);
+        return result.ModifiedCount > 0;
+    }
+
+    public async Task<NotificationMessage> GetMessageByIdAsync(string messageId)
+    {
+        var filter = Builders<NotificationMessage>.Filter.Eq(x => x.MessageId, messageId);
+        return await _collection.Find(filter).FirstOrDefaultAsync();
+    }
+
+    public async Task<IEnumerable<NotificationMessage>> GetFailedMessagesForRetryAsync()
+    {
+        var filter = Builders<NotificationMessage>.Filter.And(
+            Builders<NotificationMessage>.Filter.Eq(x => x.Status, NotificationStatus.Failed),
+            Builders<NotificationMessage>.Filter.Lte(x => x.NextRetryAt, DateTime.UtcNow),
+            Builders<NotificationMessage>.Filter.Lt(x => x.RetryCount, 5)
+        );
+
+        return await _collection.Find(filter).ToListAsync();
     }
 
     // public async Task<List<NotificationMessage>> GetUserNotificationsAsync(string userId, int page, int pageSize)

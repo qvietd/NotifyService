@@ -8,6 +8,7 @@ public class NotificationMessage
     [BsonId]
     [BsonRepresentation(BsonType.ObjectId)]
     public string Id { get; set; }
+    public string MessageId { get; set; }
     public string UserId { get; set; }
     public string ConnectionId { get; set; }
     public string Title { get; set; }
@@ -18,6 +19,8 @@ public class NotificationMessage
     public NotificationStatus Status { get; set; } = NotificationStatus.Pending;
     public int RetryCount { get; set; } = 0;
     public string ErrorMessage { get; set; }
+
+    public DateTime? NextRetryAt { get; set; }
 }
 
 public enum NotificationStatus

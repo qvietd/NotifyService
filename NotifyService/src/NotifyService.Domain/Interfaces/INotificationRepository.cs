@@ -4,9 +4,15 @@ namespace NotifyService.Infrastructure.Repositories;
 
 public interface INotificationRepository
 {
-    Task BatchInsertAsync(IEnumerable<NotificationMessage> notifications);
-    Task UpdateStatusAsync(string id, NotificationStatus status, string errorMessage = null);
-    Task<NotificationMessage> GetByIdAsync(string id);
-    Task IncrementRetryCountAsync(string id);
-    Task<IEnumerable<NotificationMessage>> GetPendingNotificationsAsync(int batchSize = 100);
+    Task<bool> BatchInsertAsync(IEnumerable<NotificationMessage> messages);
+
+    Task<IEnumerable<NotificationMessage>> GetPendingMessagesAsync(int limit);
+
+    Task<bool> UpdateMessageStatusAsync(string messageId, NotificationStatus status, string error = null);
+
+    Task<bool> UpdateBatchStatusAsync(IEnumerable<string> messageIds, NotificationStatus status);
+
+    Task<NotificationMessage> GetMessageByIdAsync(string messageId);
+
+    Task<IEnumerable<NotificationMessage>> GetFailedMessagesForRetryAsync();
 }
