@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Notify Service Client</title>
+    <script src="https://cdn.jsdelivr.net/npm/@microsoft/signalr@8.0.0/dist/browser/signalr.min.js"></script>
+</head>
+<body>
+    <h1>Notification Client</h1>
+    <div id="notifications"></div>
+
+    <script>
+        // Create connection
+        const connection = new signalR.HubConnectionBuilder()
+            .withUrl("https://localhost:5000/notifyHub")
+            .withAutomaticReconnect()
+            .build();
+
+        // Handle received notifications
+        connection.on("ReceiveNotification", function (message) {
+            const notificationDiv = document.getElementById("notifications");
+            const messageElement = document.createElement("div");
+            messageElement.innerHTML = `
+                <div style="border: 1px solid #ccc; padding: 10px; margin: 10px;">
+                    <strong>${message.title}</strong><br/>
+                    ${message.content}<br/>
+                    <small>${new Date(message.createdAt).toLocaleString()}</small>
+                </div>
+            `;
+            notificationDiv.appendChild(messageElement);
+        });
+
+        // Start connection
+        async function start() {
+            try {
+                await connection.start();
+                console.log("SignalR Connected.");
+            } catch (err) {
+                console.log(err);
+                setTimeout(start, 5000);
+            }
+        }
+
+        connection.onclose(async () => {
+            await start();
+        });
+
+        // Start the connection
+        start();
+    </script>
+</body>
+</html>
