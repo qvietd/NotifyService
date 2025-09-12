@@ -7,6 +7,7 @@ using System.Collections.Concurrent;
 using System.Text.Json;
 
 namespace NotifyService.Infrastructure.Workers;
+
 public class MessageConsumerWorker : BackgroundService
 {
     private readonly IServiceProvider _serviceProvider;
@@ -40,7 +41,7 @@ public class MessageConsumerWorker : BackgroundService
         var rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
         var messageRepository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
 
-        // Start batch processing task
+        // Start batch processing task after delay 5s (based on config), and queue not full
         _ = Task.Run(async () => await ProcessBatchPeriodically(messageRepository, stoppingToken), stoppingToken);
 
         // Start consuming messages
@@ -54,11 +55,6 @@ public class MessageConsumerWorker : BackgroundService
                     _logger.LogWarning("Failed to deserialize message");
                     return false;
                 }
-
-                notifyMessage.Status = NotificationStatus.Pending;
-                notifyMessage.CreatedAt = DateTime.UtcNow;
-                notifyMessage.RetryCount = 0;
-
                 _messageBuffer.Enqueue(notifyMessage);
 
                 // Check if we should process batch
@@ -92,8 +88,6 @@ public class MessageConsumerWorker : BackgroundService
         {
             try
             {
-                await Task.Delay(_mongoConfig.BatchTimeoutMs, stoppingToken);
-
                 if (_messageBuffer.Count > 0 &&
                     (DateTime.UtcNow - _lastBatchTime).TotalMilliseconds >= _mongoConfig.BatchTimeoutMs)
                 {
@@ -104,6 +98,7 @@ public class MessageConsumerWorker : BackgroundService
             {
                 _logger.LogError(ex, "Error in periodic batch processing");
             }
+            await Task.Delay(_mongoConfig.BatchTimeoutMs, stoppingToken);
         }
     }
 
@@ -152,7 +147,7 @@ public class MessageConsumerWorker : BackgroundService
         }
         catch
         {
-            return true; // If we can't deserialize, send to DLQ
+            return true;
         }
     }
 }

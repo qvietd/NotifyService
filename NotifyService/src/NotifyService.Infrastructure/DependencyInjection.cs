@@ -13,7 +13,6 @@ public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
     {
-
         // Configure options
         services.Configure<RabbitMQConfig>(configuration.GetSection("RabbitMQ"));
         services.Configure<MongoDBConfig>(configuration.GetSection("MongoDB"));
@@ -39,12 +38,12 @@ public static class DependencyInjection
             return ConnectionMultiplexer.Connect(settings.ConnectionString);
         });
         // Register services
-        services.AddSingleton<IRabbitMQService, RabbitMQService>();
+        // services.AddSingleton<IRabbitMQService, RabbitMQService>();
         services.AddSingleton<INotificationRepository, NotificationRepository>();
 
         // Add hosted services
-        services.AddHostedService<MessageConsumerWorker>();
-        services.AddHostedService<NotifySenderWorker>();
+        // services.AddHostedService<MessageConsumerWorker>();
+        // services.AddHostedService<NotifySenderWorker>();
         return services;
     }
 }
