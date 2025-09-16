@@ -1,10 +1,10 @@
 using Microsoft.Extensions.Options;
 using MongoDB.Driver;
-using NotifyService.Domain.Interfaces;
 using NotifyService.Infrastructure.Configuration;
 using NotifyService.Infrastructure.Repositories;
 using NotifyService.Infrastructure.Services;
 using NotifyService.Infrastructure.Workers;
+using NotifyService.src.NotifyService.Application.Interfaces;
 using StackExchange.Redis;
 
 namespace NotifyService.Infrastructure;
@@ -40,7 +40,7 @@ public static class DependencyInjection
         });
         // Register services
         services.AddSingleton<IRabbitMQService, RabbitMQService>();
-        services.AddSingleton<INotificationRepository, NotificationRepository>();
+        services.AddScoped<INotificationRepository, NotificationRepository>();
 
         // Add hosted services
         services.AddHostedService<MessageConsumerWorker>();

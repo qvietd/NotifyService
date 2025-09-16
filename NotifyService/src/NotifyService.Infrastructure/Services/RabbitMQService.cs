@@ -1,5 +1,4 @@
 ﻿using Microsoft.Extensions.Options;
-using NotifyService.Domain.Interfaces;
 using NotifyService.Infrastructure.Configuration;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -15,7 +14,9 @@ public class RabbitMQService : IRabbitMQService, IDisposable
     private IModel _channel;
     private EventingBasicConsumer _consumer;
 
-    public RabbitMQService(IOptions<RabbitMQConfig> config, ILogger<RabbitMQService> logger)
+    public RabbitMQService(
+        IOptions<RabbitMQConfig> config,
+        ILogger<RabbitMQService> logger)
     {
         _config = config.Value;
         _logger = logger;
@@ -44,10 +45,10 @@ public class RabbitMQService : IRabbitMQService, IDisposable
             _channel.ExchangeDeclare(_config.Exchange, ExchangeType.Direct, durable: true);
 
             var queueArgs = new Dictionary<string, object>
-                {
-                    {"x-dead-letter-exchange", _config.DeadLetterExchange},
-                    {"x-dead-letter-routing-key", "dlq"}
-                };
+            {
+                {"x-dead-letter-exchange", _config.DeadLetterExchange},
+                {"x-dead-letter-routing-key", "dlq"}
+            };
 
             _channel.QueueDeclare(_config.NotifyQueue,
                 durable: true,
@@ -77,7 +78,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
         }
     }
 
-    public void StartConsuming(Func<string, Task<bool>> messageHandler)
+    public async Task StartConsumingAsync(Func<string, Task<bool>> messageHandler)
     {
         _consumer = new EventingBasicConsumer(_channel);
         _consumer.Received += async (model, ea) =>
@@ -90,35 +91,38 @@ public class RabbitMQService : IRabbitMQService, IDisposable
                 var success = await messageHandler(message);
                 if (success)
                 {
-                    AcknowledgeMessage(ea.DeliveryTag);
+                    await AcknowledgeMessageAsync(ea.DeliveryTag);
                 }
                 else
                 {
-                    RejectMessage(ea.DeliveryTag, false);
+                    await RejectMessageAsync(ea.DeliveryTag, false);
                 }
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error processing message");
-                RejectMessage(ea.DeliveryTag, false);
+                await RejectMessageAsync(ea.DeliveryTag, false);
             }
         };
 
         _channel.BasicConsume(_config.NotifyQueue, false, _consumer);
         _logger.LogInformation("Started consuming messages from RabbitMQ");
+        await Task.CompletedTask;
     }
 
-    public void AcknowledgeMessage(ulong deliveryTag)
+    public async Task AcknowledgeMessageAsync(ulong deliveryTag)
     {
         _channel.BasicAck(deliveryTag, false);
+        await Task.CompletedTask;
     }
 
-    public void RejectMessage(ulong deliveryTag, bool requeue)
+    public async Task RejectMessageAsync(ulong deliveryTag, bool requeue)
     {
         _channel.BasicReject(deliveryTag, requeue);
+        await Task.CompletedTask;
     }
 
-    public void PublishToDeadLetter(string message, string error)
+    public async Task PublishToDeadLetterAsync(string message, string error)
     {
         var body = Encoding.UTF8.GetBytes(message);
         var properties = _channel.CreateBasicProperties();
@@ -130,6 +134,7 @@ public class RabbitMQService : IRabbitMQService, IDisposable
 
         _channel.BasicPublish(_config.DeadLetterExchange, "dlq", properties, body);
         _logger.LogWarning($"Message sent to DLQ: {message.Substring(0, Math.Min(100, message.Length))}...");
+        await Task.CompletedTask;
     }
 
     public void Dispose()

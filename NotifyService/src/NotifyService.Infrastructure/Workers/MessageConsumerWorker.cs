@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Options;
 using NotifyService.Domain.Entities;
-using NotifyService.Domain.Interfaces;
 using NotifyService.Infrastructure.Configuration;
 using NotifyService.Infrastructure.Repositories;
+using NotifyService.NotifyService.Application.Interfaces;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -152,7 +152,7 @@ public class MessageConsumerWorker : BackgroundService
         }
         catch
         {
-            return true; // If we can't deserialize, send to DLQ
+            return true;
         }
     }
 }
