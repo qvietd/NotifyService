@@ -3,6 +3,7 @@ using NotifyService.Domain.Entities;
 using NotifyService.Infrastructure.Configuration;
 using NotifyService.Infrastructure.Repositories;
 using NotifyService.NotifyService.Application.Interfaces;
+using NotifyService.src.NotifyService.Infrastructure.Extensions;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -16,13 +17,18 @@ public class MessageConsumerWorker : BackgroundService
     private readonly RabbitMQConfig _rabbitConfig;
     private readonly ConcurrentQueue<NotificationMessage> _messageBuffer;
     private readonly SemaphoreSlim _batchSemaphore;
+    private readonly JsonSerializerOptions _jsonSerializerOptions;
+    private readonly INotificationRepository _notificationRepository;
+    private readonly IRabbitMQService _rabbitMQService;
     private DateTime _lastBatchTime;
 
     public MessageConsumerWorker(
         IServiceProvider serviceProvider,
         ILogger<MessageConsumerWorker> logger,
         IOptions<MongoDBConfig> mongoConfig,
-        IOptions<RabbitMQConfig> rabbitConfig)
+        IOptions<RabbitMQConfig> rabbitConfig,
+        INotificationRepository notificationRepository,
+        IRabbitMQService rabbitMQService)
     {
         _serviceProvider = serviceProvider;
         _logger = logger;
@@ -31,21 +37,26 @@ public class MessageConsumerWorker : BackgroundService
         _messageBuffer = new ConcurrentQueue<NotificationMessage>();
         _batchSemaphore = new SemaphoreSlim(1, 1);
         _lastBatchTime = DateTime.UtcNow;
+        _notificationRepository = notificationRepository;
+        _rabbitMQService = rabbitMQService;
+        _jsonSerializerOptions = new JsonSerializerOptions()
+        {
+            Converters = { new DictionaryObjectJsonConverter() }
+        };
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
         _logger.LogInformation("MessageConsumerWorker started");
 
-        using var scope = _serviceProvider.CreateScope();
-        var rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
-        var messageRepository = scope.ServiceProvider.GetRequiredService<INotificationRepository>();
+        // using var scope = _serviceProvider.CreateScope();
+        // var rabbitMQService = scope.ServiceProvider.GetRequiredService<IRabbitMQService>();
 
         // Start batch processing task after delay 5s (based on config), and queue not full
-        _ = Task.Run(async () => await ProcessBatchPeriodically(messageRepository, stoppingToken), stoppingToken);
+        _ = Task.Run(async () => await ProcessBatchPeriodically(stoppingToken), stoppingToken);
 
         // Start consuming messages
-        rabbitMQService.StartConsuming(async (message) =>
+        await _rabbitMQService.StartConsumingAsync(async (message) =>
         {
             try
             {
@@ -60,7 +71,7 @@ public class MessageConsumerWorker : BackgroundService
                 // Check if we should process batch
                 if (_messageBuffer.Count >= _mongoConfig.BatchSize)
                 {
-                    await ProcessBatch(messageRepository);
+                    await ProcessBatch(stoppingToken);
                 }
 
                 return true;
@@ -72,7 +83,7 @@ public class MessageConsumerWorker : BackgroundService
                 // Check retry count and send to DLQ if exceeded
                 if (ShouldSendToDeadLetter(message))
                 {
-                    rabbitMQService.PublishToDeadLetter(message, ex.Message);
+                    await _rabbitMQService.PublishToDeadLetterAsync(message, ex.Message);
                 }
 
                 return false;
@@ -82,7 +93,7 @@ public class MessageConsumerWorker : BackgroundService
         await Task.Delay(Timeout.Infinite, stoppingToken);
     }
 
-    private async Task ProcessBatchPeriodically(INotificationRepository repository, CancellationToken stoppingToken)
+    private async Task ProcessBatchPeriodically(CancellationToken stoppingToken)
     {
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -91,7 +102,7 @@ public class MessageConsumerWorker : BackgroundService
                 if (_messageBuffer.Count > 0 &&
                     (DateTime.UtcNow - _lastBatchTime).TotalMilliseconds >= _mongoConfig.BatchTimeoutMs)
                 {
-                    await ProcessBatch(repository);
+                    await ProcessBatch(stoppingToken);
                 }
             }
             catch (Exception ex)
@@ -102,7 +113,7 @@ public class MessageConsumerWorker : BackgroundService
         }
     }
 
-    private async Task ProcessBatch(INotificationRepository repository)
+    private async Task ProcessBatch(CancellationToken stoppingToken)
     {
         await _batchSemaphore.WaitAsync();
         try
@@ -115,7 +126,7 @@ public class MessageConsumerWorker : BackgroundService
 
             if (messages.Any())
             {
-                var success = await repository.BatchInsertAsync(messages);
+                var success = await _notificationRepository.BatchInsertAsync(messages);
                 if (success)
                 {
                     _logger.LogInformation($"Successfully inserted batch of {messages.Count} messages");
@@ -142,7 +153,7 @@ public class MessageConsumerWorker : BackgroundService
     {
         try
         {
-            var msg = JsonSerializer.Deserialize<NotificationMessage>(message);
+            var msg = JsonSerializer.Deserialize<NotificationMessage>(message, _jsonSerializerOptions);
             return msg?.RetryCount >= _rabbitConfig.MaxRetryCount;
         }
         catch

@@ -1,5 +1,5 @@
 ﻿using MongoDB.Driver;
-using NotifyService.NotifyService.Core.Entities;
+using NotifyService.Domain.Entities;
 
 namespace NotifyService.NotifyService.Infrastructure.Data;
 
@@ -22,24 +22,24 @@ public class MongoDbContext
         CreateIndexes();
     }
 
-    public IMongoCollection<Notification> Notifications =>
-        _database.GetCollection<Notification>("notifications");
+    public IMongoCollection<NotificationMessage> Notifications =>
+        _database.GetCollection<NotificationMessage>("notifications");
 
     private void CreateIndexes()
     {
-        var indexKeysDefinition = Builders<Notification>.IndexKeys
+        var indexKeysDefinition = Builders<NotificationMessage>.IndexKeys
             .Ascending(x => x.UserId)
             .Descending(x => x.CreatedAt);
 
-        var indexModel = new CreateIndexModel<Notification>(
+        var indexModel = new CreateIndexModel<NotificationMessage>(
             indexKeysDefinition,
             new CreateIndexOptions { Name = "userId_createdAt" });
 
         Notifications.Indexes.CreateOne(indexModel);
 
         // Index for status
-        var statusIndex = Builders<Notification>.IndexKeys.Ascending(x => x.Status);
-        Notifications.Indexes.CreateOne(new CreateIndexModel<Notification>(
+        var statusIndex = Builders<NotificationMessage>.IndexKeys.Ascending(x => x.Status);
+        Notifications.Indexes.CreateOne(new CreateIndexModel<NotificationMessage>(
             statusIndex,
             new CreateIndexOptions { Name = "status" }));
     }

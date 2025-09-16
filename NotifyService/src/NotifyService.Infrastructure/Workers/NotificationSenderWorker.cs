@@ -67,32 +67,32 @@ public class NotifySenderWorker : BackgroundService
             try
             {
                 // Update status to processing
-                await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Processing);
+                // await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Processing);
 
-                // Send via SignalR
-                if (!string.IsNullOrEmpty(message.MessageId))
-                {
-                    await hubContext.Clients.Client(message.MessageId)
-                        .SendAsync("ReceiveNotification", message);
-                }
-                else if (!string.IsNullOrEmpty(message.UserId))
-                {
-                    await hubContext.Clients.User(message.UserId)
-                        .SendAsync("ReceiveNotification", message);
-                }
-                else
-                {
-                    await hubContext.Clients.All
-                        .SendAsync("ReceiveNotification", message);
-                }
+                // // Send via SignalR
+                // if (!string.IsNullOrEmpty(message.MessageId))
+                // {
+                //     await hubContext.Clients.Client(message.MessageId)
+                //         .SendAsync("ReceiveNotification", message);
+                // }
+                // else if (!string.IsNullOrEmpty(message.UserId))
+                // {
+                //     await hubContext.Clients.User(message.UserId)
+                //         .SendAsync("ReceiveNotification", message);
+                // }
+                // else
+                // {
+                //     await hubContext.Clients.All
+                //         .SendAsync("ReceiveNotification", message);
+                // }
 
                 // Update status to sent
-                await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Sent);
-                _logger.LogInformation($"Message {message.MessageId} sent successfully");
+                // await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Sent);
+                // _logger.LogInformation($"Message {message.MessageId} sent successfully");
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Failed to send message {message.MessageId}");
+                //_logger.LogError(ex, $"Failed to send message {message.MessageId}");
                 await HandleFailedMessage(message, repository, ex.Message);
             }
         });
@@ -109,21 +109,21 @@ public class NotifySenderWorker : BackgroundService
         {
             try
             {
-                _logger.LogInformation($"Retrying message {message.MessageId}, attempt {message.RetryCount + 1}");
+                //_logger.LogInformation($"Retrying message {message.MessageId}, attempt {message.RetryCount + 1}");
 
                 // Send via SignalR
-                if (!string.IsNullOrEmpty(message.ConnectionId))
-                {
-                    await hubContext.Clients.Client(message.ConnectionId)
-                        .SendAsync("ReceiveNotification", message);
-                }
-                else if (!string.IsNullOrEmpty(message.UserId))
-                {
-                    await hubContext.Clients.User(message.UserId)
-                        .SendAsync("ReceiveNotification", message);
-                }
+                // if (!string.IsNullOrEmpty(message.ConnectionId))
+                // {
+                //     await hubContext.Clients.Client(message.ConnectionId)
+                //         .SendAsync("ReceiveNotification", message);
+                // }
+                // else if (!string.IsNullOrEmpty(message.UserId))
+                // {
+                //     await hubContext.Clients.User(message.UserId)
+                //         .SendAsync("ReceiveNotification", message);
+                // }
 
-                await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Sent);
+                //await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Sent);
             }
             catch (Exception ex)
             {
@@ -136,21 +136,21 @@ public class NotifySenderWorker : BackgroundService
     {
         message.RetryCount++;
 
-        if (message.RetryCount >= 5)
-        {
-            // Move to dead letter
-            await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.DeadLetter, error);
-            _logger.LogWarning($"Message {message.MessageId} moved to dead letter after {message.RetryCount} retries");
-        }
-        else
-        {
-            // Calculate next retry with exponential backoff
-            var delay = CalculateExponentialBackoff(message.RetryCount);
-            message.NextRetryAt = DateTime.UtcNow.Add(delay);
+        // if (message.RetryCount >= 5)
+        // {
+        //     // Move to dead letter
+        //     await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.DeadLetter, error);
+        //     _logger.LogWarning($"Message {message.MessageId} moved to dead letter after {message.RetryCount} retries");
+        // }
+        // else
+        // {
+        //     // Calculate next retry with exponential backoff
+        //     var delay = CalculateExponentialBackoff(message.RetryCount);
+        //     message.NextRetryAt = DateTime.UtcNow.Add(delay);
 
-            await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Failed, error);
-            _logger.LogInformation($"Message {message.MessageId} will retry at {message.NextRetryAt}");
-        }
+        //     await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Failed, error);
+        //     _logger.LogInformation($"Message {message.MessageId} will retry at {message.NextRetryAt}");
+        // }
     }
 
     private TimeSpan CalculateExponentialBackoff(int retryCount)

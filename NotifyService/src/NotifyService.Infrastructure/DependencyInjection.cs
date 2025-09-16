@@ -4,7 +4,9 @@ using NotifyService.Infrastructure.Configuration;
 using NotifyService.Infrastructure.Repositories;
 using NotifyService.Infrastructure.Services;
 using NotifyService.Infrastructure.Workers;
+using NotifyService.NotifyService.Application.Interfaces;
 using NotifyService.src.NotifyService.Application.Interfaces;
+using RabbitMQ.Client;
 using StackExchange.Redis;
 
 namespace NotifyService.Infrastructure;
@@ -24,7 +26,7 @@ public static class DependencyInjection
             return new MongoClient(settings.ConnectionString);
         });
 
-        services.AddSingleton<IMongoDatabase>(sp =>
+        services.AddSingleton(sp =>
         {
             var client = sp.GetRequiredService<IMongoClient>();
             var settings = sp.GetRequiredService<IOptions<MongoDBConfig>>().Value;
@@ -37,9 +39,25 @@ public static class DependencyInjection
             var settings = sp.GetRequiredService<IOptions<RedisConfig>>().Value;
             return ConnectionMultiplexer.Connect(settings.ConnectionString);
         });
-        // Register services
+        // RabbitMQ
+        services.AddSingleton(sp =>
+        {
+            var _config = sp.GetRequiredService<IOptions<RabbitMQConfig>>().Value;
+            var factory = new ConnectionFactory
+            {
+                HostName = _config.HostName,
+                Port = _config.Port,
+                UserName = _config.UserName,
+                Password = _config.Password,
+                VirtualHost = _config.VirtualHost,
+                AutomaticRecoveryEnabled = true,
+                NetworkRecoveryInterval = TimeSpan.FromSeconds(10)
+            };
+            return factory.CreateConnection();
+        });
         services.AddSingleton<IRabbitMQService, RabbitMQService>();
-        services.AddScoped<INotificationRepository, NotificationRepository>();
+        // regis ter services
+        services.AddSingleton<INotificationRepository, NotificationRepository>();
 
         // Add hosted services
         services.AddHostedService<MessageConsumerWorker>();
