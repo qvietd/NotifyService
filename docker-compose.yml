@@ -12,8 +12,8 @@ services:
       RABBITMQ_DEFAULT_PASS: admin123
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - notify-network
+    # networks:
+    #   - notify-network
 
   mongodb:
     image: mongo:latest
@@ -26,8 +26,8 @@ services:
       MONGO_INITDB_DATABASE: NotifyDB
     volumes:
       - mongodb_data:/data/db
-    networks:
-      - notify-network
+    # networks:
+    #   - notify-network
 
   redis:
     image: redis:alpine
@@ -37,101 +37,33 @@ services:
     command: redis-server --appendonly yes
     volumes:
       - redis_data:/data
-    networks:
-      - notify-network
+    # networks:
+    #   - notify-network
 
-  notify-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: notify-service
-    ports:
-      - "5000:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - RabbitMQ__HostName=rabbitmq
-      - MongoDB__ConnectionString=mongodb://admin:admin123@mongodb:27017
-      - Redis__ConnectionString=redis:6379
-    depends_on:
-      - rabbitmq
-      - mongodb
-      - redis
-    networks:
-      - notify-network
-
-volumes:
-  rabbitmq_data:
-  mongodb_data:
-  redis_data:
-
-networks:
-  notify-network:
-    driver: bridgeversion: '3.8'
-
-services:
-  rabbitmq:
-    image: rabbitmq:3-management
-    container_name: notify-rabbitmq
-    ports:
-      - "5672:5672"
-      - "15672:15672"
-    environment:
-      RABBITMQ_DEFAULT_USER: admin
-      RABBITMQ_DEFAULT_PASS: admin123
-    volumes:
-      - rabbitmq_data:/var/lib/rabbitmq
-    networks:
-      - notify-network
-
-  mongodb:
-    image: mongo:latest
-    container_name: notify-mongodb
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_ROOT_USERNAME: admin
-      MONGO_INITDB_ROOT_PASSWORD: admin123
-      MONGO_INITDB_DATABASE: NotifyDB
-    volumes:
-      - mongodb_data:/data/db
-    networks:
-      - notify-network
-
-  redis:
-    image: redis:alpine
-    container_name: notify-redis
-    ports:
-      - "6379:6379"
-    command: redis-server --appendonly yes
-    volumes:
-      - redis_data:/data
-    networks:
-      - notify-network
-
-  notify-service:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: notify-service
-    ports:
-      - "5000:80"
-    environment:
-      - ASPNETCORE_ENVIRONMENT=Production
-      - RabbitMQ__HostName=rabbitmq
-      - MongoDB__ConnectionString=mongodb://admin:admin123@mongodb:27017
-      - Redis__ConnectionString=redis:6379
-    depends_on:
-      - rabbitmq
-      - mongodb
-      - redis
-    networks:
-      - notify-network
+  # notify-service:
+  #   build:
+  #     context: .
+  #     dockerfile: Dockerfile
+  #   container_name: notify-service
+  #   ports:
+  #     - "5000:80"
+  #   environment:
+  #     - ASPNETCORE_ENVIRONMENT=Production
+  #     - RabbitMQ__HostName=rabbitmq
+  #     - MongoDB__ConnectionString=mongodb://admin:admin123@mongodb:27017
+  #     - Redis__ConnectionString=redis:6379
+  #   depends_on:
+  #     - rabbitmq
+  #     - mongodb
+  #     - redis
+  #   networks:
+  #     - notify-network
 
 volumes:
   rabbitmq_data:
   mongodb_data:
   redis_data:
 
-networks:
-  notify-network:
-    driver: bridge
+# networks:
+#   notify-network:
+#     driver: bridge

@@ -70,9 +70,9 @@ public class NotifySenderWorker : BackgroundService
                 await repository.UpdateMessageStatusAsync(message.MessageId, NotificationStatus.Processing);
 
                 // Send via SignalR
-                if (!string.IsNullOrEmpty(message.ConnectionId))
+                if (!string.IsNullOrEmpty(message.MessageId))
                 {
-                    await hubContext.Clients.Client(message.ConnectionId)
+                    await hubContext.Clients.Client(message.MessageId)
                         .SendAsync("ReceiveNotification", message);
                 }
                 else if (!string.IsNullOrEmpty(message.UserId))

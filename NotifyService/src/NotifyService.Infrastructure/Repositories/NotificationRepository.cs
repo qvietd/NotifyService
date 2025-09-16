@@ -63,7 +63,7 @@ public class NotificationRepository : INotificationRepository
         var filter = Builders<NotificationMessage>.Filter.Eq(x => x.MessageId, messageId);
         var update = Builders<NotificationMessage>.Update
             .Set(x => x.Status, status)
-            .Set(x => x.ProcessedAt, DateTime.UtcNow);
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
         if (!string.IsNullOrEmpty(error))
         {
@@ -79,7 +79,7 @@ public class NotificationRepository : INotificationRepository
         var filter = Builders<NotificationMessage>.Filter.In(x => x.MessageId, messageIds);
         var update = Builders<NotificationMessage>.Update
             .Set(x => x.Status, status)
-            .Set(x => x.ProcessedAt, DateTime.UtcNow);
+            .Set(x => x.UpdatedAt, DateTime.UtcNow);
 
         var result = await _collection.UpdateManyAsync(filter, update);
         return result.ModifiedCount > 0;
